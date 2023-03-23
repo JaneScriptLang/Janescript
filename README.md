@@ -1,0 +1,2 @@
+# janescript
+Bootstrapped JNS
