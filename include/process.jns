@@ -1,0 +1,13 @@
+from native reference os;
+from native reference sys;
+
+structure __Process{
+    fn __init__(this){
+        this.args = sys.argv;
+        this.getenv = os.getenv;
+        this.environ = os.environ;
+        this.exit = sys.exit;
+        this.executable = (sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "main.py"));
+    }
+}
+process = __Process();

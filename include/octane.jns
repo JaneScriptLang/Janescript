@@ -1,0 +1,37 @@
+#include <_octane>
+#include <stdref>
+from native import io
+
+structure WSGIApp{
+    def __init__(self,*,logger_fp=StringIO()){
+        self.router = Router()
+        self.logger = RuntimeLogger(logger_fp)
+    }
+
+    def set_routes(self, routes: list){
+        for rule in routes{ # transpiled
+            self.router.endpoint(rule)
+            }
+        }
+
+    def endpoint(self, rule, func):
+        def predicate(r,f):
+            self.router.endpoint(Route(r,f))
+
+        return predicate
+
+    def __call__(self, environ, start_response):
+        request = Request(environ, start_response)
+        self.logger.info(f"Environ: {environ}")
+        try:
+            print_request(request, stdout)
+            func = self.router.get_route(request.route)
+            if func:
+                response: Response = func(request)
+                return response.make_response()
+            else:
+                return HTTP404(request).make_response()
+        except Exception as e:
+            print(e)
+            HTTPFailedResponse(request).make_response()
+}

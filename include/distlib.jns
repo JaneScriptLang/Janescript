@@ -1,0 +1,22 @@
+#include <os>
+#include <fs>
+#include <stdlib>
+
+structure info{
+    fn __init__(this){
+        this.name = "";
+        this.include_name = this.name;
+        this.author = "amnesia";
+        this.includes = [];
+    }
+}
+
+fn make_package(pkg: info){
+    dir = MkDir("_"+pkg.include_name);
+    code = "";
+    for i=0 until end(pkg.includes) step 1{
+        WriteFile("_"+pkg.include_name+"/"+pkg.includes[i], open(pkg.includes[i]).read());
+        code += format("#include <%>\n", (pkg.includes[i],));
+    }
+    open(pkg.include_name+".jns", "w+").write(code);
+}

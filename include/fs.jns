@@ -1,0 +1,45 @@
+#include <stdref>
+#include <os>
+from native reference os;
+//from native reference os as _pathlib;
+structure FileIOWrapper{
+    fn __init__(this, filename){
+        this.filename = filename;
+        this.content = "";}
+
+    fn write(this, data){
+        ObjWrite(this, data, this.filename);
+    }
+    fn read(this){
+        ObjRead(this, "data", this.filename);
+        return this.data;
+    }
+    fn readLines(this){
+        this.read();
+        return this.data.splitlines();
+    }
+}
+
+fn OpenFile(filename){
+    return FileIOWrapper(filename);
+}
+fn ReadFile(filename){
+    file = OpenFile(filename);
+    return file.read();
+}
+
+fn WriteFile(filename, data){
+    file = OpenFile(filename);
+    file.write(data);
+}
+fn MkDir(dirname){
+    os.mkdir(dirname);
+    return ObjDir(dirname);
+}
+
+structure ObjDir{
+    def __init__(self, basepath){
+        self.files = [FileIOWrapper(basepath+"/"+i) for i in os.listdir(basepath)];
+        self.name = basepath;
+        }
+}

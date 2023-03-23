@@ -1,0 +1,12 @@
+//#include <ui>
+require a from test2;
+//ui = Graphics();
+
+//@ui.onupdate
+//fn gettime(dt){
+//    printf("% time elapsed since last update" (dt, ));
+//}
+
+
+//ui.loop();
+print(a);

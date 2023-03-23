@@ -1,0 +1,1272 @@
+//Unindentedfrom native reference os;
+
+#include <stdlib>
+structure Parser {
+fn __init__(this, code){
+
+this.code = code;
+
+this.path = [os.getcwd(), os.path.dirname(os.path.abspath(__file__))+"/include"];
+
+this.parse(this.code);
+
+}
+
+
+
+fn parse(this, code, ret=False){
+
+code = this.ParsePragmas(code);
+
+code = this.ParseComments(code);
+
+code = this.ParseEOL(code);
+
+code = this.ParseImports(code);
+
+code = this.ParseBraces(code);
+
+code = this.ParseIndents(code);
+
+code = this.ParseKeywords(code);
+
+
+
+code = this.CleanupCode(code);
+
+if(ret){
+
+return code;
+
+}
+
+open("outs.py","w+").write(code);
+
+}
+
+
+
+fn ParseComments(this, code){
+
+for lineNo=0 until len(code.splitlines())-1 step 1{
+
+line = code.splitlines()[lineNo];
+
+if(line.startswith("//")){
+
+code = code.replace(line,"\n");
+
+}
+
+if "//" in line and not this.StrContains("//",line){
+
+code = code.replace(line,line.split("//")[0]);
+
+}
+
+}
+
+return code;
+
+}
+
+
+
+fn ParseKeywords(this, code){
+
+for lineNo=0 until len(code.splitlines())-1 step 1{
+
+line = code.splitlines()[lineNo];
+
+words = line.split();
+
+for wordNo=0 until len(words)-1 step 1{
+
+word = words[wordNo];
+
+code = code.replace(line, line.replace("else if", "elif"));
+
+if word == "fn" and not this.StrContains("fn", line){
+
+code = code.replace(line, line.replace("fn","def"));
+
+}
+
+if word == "structure" and not this.StrContains("structure", line){
+
+code = code.replace(line, line.replace("structure","class"));
+
+}
+
+if word == "for" and not this.StrContains("for", line) and not "#transpiled" in line{
+
+_, var,kw,fn,stp,step = line.split();
+
+step = step.partition(":")[0];
+
+varname, val = var.split("=");
+
+indents = line.count("  ");
+
+ind = "  "*indents;
+
+code = code.replace(line, format("for % in range(%,%,%): #transpiled", (varname, val, fn, step)));
+
+}
+
+
+
+if word == "const" and not this.StrContains("const", line){
+
+varname = words[wordNo+1];
+
+code = code.replace(format("const %", (varname,)), varname.upper());
+
+for _=0 until len(code.splitlines())-1 step 1{
+
+l = code.splitlines()[_];
+
+if varname in l and not this.StrContains(varname,l){
+
+code = code.replace(l, l.replace(varname, varname.upper()));
+
+}
+
+}
+
+}
+
+}
+
+}
+
+return code;
+
+}
+
+
+
+
+
+fn ParsePragmas(this, code){
+
+
+
+for lineNo=0 until len(code.splitlines())-1 step 1{
+
+line = code.splitlines()[lineNo];
+
+words = line.split();
+
+for wordNo=0 until len(words)-1 step 1{
+
+word = words[wordNo];
+
+if word == "#pragma" and not this.StrContains("#pragma", line){
+
+name,val = line[len(word):].split(",");
+
+
+
+setattr(self,name,val);
+
+}
+
+}
+
+}
+
+return code;
+
+}
+
+
+
+fn ParseImports(this, code){
+
+
+
+for lineNo=0 until len(code.splitlines())-1 step 1{
+
+line = code.splitlines()[lineNo];
+
+words = line.split();
+
+for wordNo=0 until len(words)-1 step 1{
+
+if word == "from" and not this.StrContains("from", line){
+
+if words[idx+1] == "native"{
+
+if words[idx+2] == "import"{
+
+import_name = words[idx+3];
+
+code = code.replace(line, format("from % import *", (import_name, )));
+
+}
+
+else if words[idx+2] == "reference"{
+
+import_name = words[idx+3];
+
+code = code.replace(line, format("import %", (import_name, )));
+
+}
+
+}
+
+}
+
+else if word == "#include" and not this.StrContains("#include", line){
+
+importName = words[idx+1].strip("<>");
+
+for i=0 until len(this.path)-1 step 1{
+
+fdir = this.path[i];
+
+if os.path.exists(i+"/"+importName+".jns"){
+
+content = open(i+"/"+importName+".jns").read();
+
+nc = this.parse(content, True);
+
+code = nc+ "\n" + code;
+
+}
+
+}
+
+}
+
+}
+
+}
+
+return code;
+
+}
+
+
+
+fn ParseEOL(this, code){
+
+lbraces = 0;
+
+rbraces = 0;
+
+code = code.splitlines();
+
+for i=0 until len(code)-1 step 1{
+
+if "\{" in line and not self.isAssignment(line) and not self.StrContains("\{", line){
+
+lbraces += 1;
+
+code[i] =( line.replace("\{",":"));
+
+code.insert(i+1, "#startindent");
+
+}
+
+if "\}" in line and not self.StrContains("\}", line){
+
+rbraces += 1;
+
+code[i] =( line.replace("\}",""));
+
+code.insert(i+1, "#endindent");
+
+}
+
+}
+
+
+
+assert lbraces == rbraces, format("Opening Brace Count (%) does not match Closing Brace Count (%)", (lbraces, rbraces));
+
+return "\n".join(code);
+
+}
+
+
+
+fn isAssignment(this, line){
+
+if "{" in line{
+
+if this.StrContains("\{",line) or '=\{' in line.replace(" ","").replace("\t","")){
+
+return True;
+
+}
+
+}
+
+return False;
+
+}
+
+
+
+fn ParseIndents(this, code){
+
+indentCount = 0;
+
+code = code.splitlines();
+
+for i=0 until len(code)-1 step 1{
+
+line = code[i];
+
+
+
+if line == "#startindent"{
+
+indentCount += 1;
+
+}
+
+if line == "#endindent"{
+
+indentCount -= 1;
+
+}
+
+code[i] = ("\t"*indentCount + line);
+
+}
+
+return "\n".join(code);
+
+}
+fn CleanupCode(this, code){
+code = code.replace("#startindent","");
+code = code.replace("#endindent","");
+return code;
+}
+def StrContains(self, pattern, line){
+if not pattern in line{
+return False;
+}
+if not "\"" in line{
+return False;
+}
+else{
+firstquote = line.find('"');
+qc = 1;
+lastquote = -1;
+for l=0 until (len(line[firstquote+1:])) step 1{
+
+if line[l] == '"'{
+
+lastquote = l;
+
+}
+
+
+
+}
+
+return pattern in line[firstquote:lastquote];
+}
+}
+
+}
+
+
+
+from native reference json;
+
+from native reference typer;
+
+from native reference subprocess;
+
+from native reference os;
+
+from native reference sys;
+
+from native reference functools;
+
+
+
+fn main(file: str, transpile:bool=typer.Option(False, "-T", "--transpile-only"), cwd: str = typer.Option(os.getcwd(), "-cwd","--workdir", "-D"), noexec: bool = typer.Option(False, "--noexec","--compiler-mode", "-C", is_eager=True)){
+
+os.chdir(cwd);
+
+f = open(file);
+
+Parser(f.read());
+
+if not noexec{
+
+subprocess.call([sys.executable, "outs.py"]);
+
+}
+
+if not transpile{
+
+os.remove("outs.py");
+
+}
+
+f.close();
+
+sys.exit(0);
+
+}
+
+if __name__ == "__main__"{
+
+typer.run(main);
+
+}
+from native reference os;
+
+
+
+#include <stdlib>
+
+structure Parser {
+
+fn __init__(this, code){
+
+
+
+this.code = code;
+
+
+
+this.path = [os.getcwd(), os.path.dirname(os.path.abspath(__file__))+"/include"];
+
+
+
+this.parse(this.code);
+
+
+
+}
+
+
+
+
+
+
+
+fn parse(this, code, ret=False){
+
+
+
+code = this.ParsePragmas(code);
+
+
+
+code = this.ParseComments(code);
+
+
+
+code = this.ParseEOL(code);
+
+
+
+code = this.ParseImports(code);
+
+
+
+code = this.ParseBraces(code);
+
+
+
+code = this.ParseIndents(code);
+
+
+
+code = this.ParseKeywords(code);
+
+
+
+
+
+
+
+code = this.CleanupCode(code);
+
+
+
+if(ret){
+
+
+
+return code;
+
+
+
+}
+
+
+
+open("outs.py","w+").write(code);
+
+
+
+}
+
+
+
+
+
+
+
+fn ParseComments(this, code){
+
+
+
+for lineNo=0 until len(code.splitlines())-1 step 1{
+
+
+
+line = code.splitlines()[lineNo];
+
+
+
+if(line.startswith("//")){
+
+
+
+code = code.replace(line,"\n");
+
+
+
+}
+
+
+
+if "//" in line and not this.StrContains("//",line){
+
+
+
+code = code.replace(line,line.split("//")[0]);
+
+
+
+}
+
+
+
+}
+
+
+
+return code;
+
+
+
+}
+
+
+
+
+
+
+
+fn ParseKeywords(this, code){
+
+
+
+for lineNo=0 until len(code.splitlines())-1 step 1{
+
+
+
+line = code.splitlines()[lineNo];
+
+
+
+words = line.split();
+
+
+
+for wordNo=0 until len(words)-1 step 1{
+
+
+
+word = words[wordNo];
+
+
+
+code = code.replace(line, line.replace("else if", "elif"));
+
+
+
+if word == "fn" and not this.StrContains("fn", line){
+
+
+
+code = code.replace(line, line.replace("fn","def"));
+
+
+
+}
+
+
+
+if word == "structure" and not this.StrContains("structure", line){
+
+
+
+code = code.replace(line, line.replace("structure","class"));
+
+
+
+}
+
+
+
+if word == "for" and not this.StrContains("for", line) and not "#transpiled" in line{
+
+
+
+_, var,kw,fn,stp,step = line.split();
+
+
+
+step = step.partition(":")[0];
+
+
+
+varname, val = var.split("=");
+
+
+
+indents = line.count("  ");
+
+
+
+ind = "  "*indents;
+
+
+
+code = code.replace(line, format("for % in range(%,%,%): #transpiled", (varname, val, fn, step)));
+
+
+
+}
+
+
+
+
+
+
+
+if word == "const" and not this.StrContains("const", line){
+
+
+
+varname = words[wordNo+1];
+
+
+
+code = code.replace(format("const %", (varname,)), varname.upper());
+
+
+
+for _=0 until len(code.splitlines())-1 step 1{
+
+
+
+l = code.splitlines()[_];
+
+
+
+if varname in l and not this.StrContains(varname,l){
+
+
+
+code = code.replace(l, l.replace(varname, varname.upper()));
+
+
+
+}
+
+
+
+}
+
+
+
+}
+
+
+
+}
+
+
+
+}
+
+
+
+return code;
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+fn ParsePragmas(this, code){
+
+
+
+
+
+
+
+for lineNo=0 until len(code.splitlines())-1 step 1{
+
+
+
+line = code.splitlines()[lineNo];
+
+
+
+words = line.split();
+
+
+
+for wordNo=0 until len(words)-1 step 1{
+
+
+
+word = words[wordNo];
+
+
+
+if word == "#pragma" and not this.StrContains("#pragma", line){
+
+
+
+name,val = line[len(word):].split(",");
+
+
+
+
+
+
+
+setattr(self,name,val);
+
+
+
+}
+
+
+
+}
+
+
+
+}
+
+
+
+return code;
+
+
+
+}
+
+
+
+
+
+
+
+fn ParseImports(this, code){
+
+
+
+
+
+
+
+for lineNo=0 until len(code.splitlines())-1 step 1{
+
+
+
+line = code.splitlines()[lineNo];
+
+
+
+words = line.split();
+
+
+
+for wordNo=0 until len(words)-1 step 1{
+
+
+
+if word == "from" and not this.StrContains("from", line){
+
+
+
+if words[idx+1] == "native"{
+
+
+
+if words[idx+2] == "import"{
+
+
+
+import_name = words[idx+3];
+
+
+
+code = code.replace(line, format(from % import *", (import_name, )));
+
+
+
+}
+
+
+
+else if words[idx+2] == "reference"{
+
+
+
+import_name = words[idx+3];
+
+
+
+code = code.replace(line, format(import %", (import_name, )));
+
+
+
+}
+
+
+
+}
+
+
+
+}
+
+
+
+else if word == "#include" and not this.StrContains("#include", line){
+
+
+
+importName = words[idx+1].strip("<>");
+
+
+
+for i=0 until len(this.path)-1 step 1{
+
+
+
+fdir = this.path[i];
+
+
+
+if os.path.exists(i+"/"+importName+".jns"){
+
+
+
+content = open(i+"/"+importName+".jns").read();
+
+
+
+nc = this.parse(content, True);
+
+
+
+code = nc+ "\n" + code;
+
+
+
+}
+
+
+
+}
+
+
+
+}
+
+
+
+}
+
+
+
+}
+
+
+
+return code;
+
+
+
+}
+
+
+
+
+
+
+
+fn ParseEOL(this, code){
+
+
+
+lbraces = 0;
+
+
+
+rbraces = 0;
+
+
+
+code = code.splitlines();
+
+
+
+for i=0 until len(code)-1 step 1{
+
+
+
+if "{" in line and not self.isAssignment(line) and not self.StrContains("{", line){
+
+
+
+lbraces += 1;
+
+
+
+code[i] =( line.replace("{",":"));
+
+
+
+code.insert(i+1, "#startindent");
+
+
+
+}
+
+
+
+if "}" in line and not self.StrContains("}", line){
+
+
+
+rbraces += 1;
+
+
+
+code[i] =( line.replace("}",""));
+
+
+
+code.insert(i+1, "#endindent");
+
+
+
+}
+
+
+
+}
+
+
+
+
+
+
+
+assert lbraces == rbraces, format("Opening Brace Count (%) does not match Closing Brace Count (%)", (lbraces, rbraces));
+
+
+
+return "\n".join(code);
+
+
+
+}
+
+
+
+
+
+
+
+fn isAssignment(this, line){
+
+
+
+if "{" in line{
+
+
+
+if this.StrContains("{",line) or '={' in line.replace(" ","").replace("\t","")){
+
+
+
+return True;
+
+
+
+}
+
+
+
+}
+
+
+
+return False;
+
+
+
+}
+
+
+
+
+
+
+
+fn ParseIndents(this, code){
+
+
+
+indentCount = 0;
+
+
+
+code = code.splitlines();
+
+
+
+for i=0 until len(code)-1 step 1{
+
+
+
+line = code[i];
+
+
+
+
+
+
+
+if line == "#startindent"{
+
+
+
+indentCount += 1;
+
+
+
+}
+
+
+
+if line == "#endindent"{
+
+
+
+indentCount -= 1;
+
+
+
+}
+
+
+
+code[i] = ("\t"*indentCount + line);
+
+
+
+}
+
+
+
+return "\n".join(code);
+
+
+
+}
+
+fn CleanupCode(this, code){
+
+code = code.replace("#startindent","");
+
+code = code.replace("#endindent","");
+
+return code;
+
+}
+
+def StrContains(self, pattern, line){
+
+if not pattern in line{
+
+return False;
+
+}
+
+if not "\"" in line{
+
+return False;
+
+}
+
+else{
+
+firstquote = line.find('"');
+
+qc = 1;
+
+lastquote = -1;
+
+for l=0 until (len(line[firstquote+1:])) step 1{
+
+
+
+if line[l] == '"'{
+
+
+
+lastquote = l;
+
+
+
+}
+
+
+
+
+
+
+
+}
+
+
+
+return pattern in line[firstquote:lastquote];
+
+}
+
+}
+
+
+
+}
+
+
+
+
+
+
+
+from native reference json;
+
+
+
+from native reference typer;
+
+
+
+from native reference subprocess;
+
+
+
+from native reference os;
+
+
+
+from native reference sys;
+
+
+
+from native reference functools;
+
+
+
+
+
+
+
+fn main(file: str, transpile:bool=typer.Option(False, "-T", "--transpile-only"), cwd: str = typer.Option(os.getcwd(), "-cwd","--workdir", "-D"), noexec: bool = typer.Option(False, "--noexec","--compiler-mode", "-C", is_eager=True)){
+
+
+
+os.chdir(cwd);
+
+
+
+f = open(file);
+
+
+
+Parser(f.read());
+
+
+
+if not noexec{
+
+
+
+subprocess.call([sys.executable, "outs.py"]);
+
+
+
+}
+
+
+
+if not transpile{
+
+
+
+os.remove("outs.py");
+
+
+
+}
+
+
+
+f.close();
+
+
+
+sys.exit(0);
+
+
+
+}
+
+
+
+if __name__ == "__main__"{
+
+
+
+typer.run(main);
+
+
+
+}
+

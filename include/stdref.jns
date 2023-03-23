@@ -1,0 +1,22 @@
+from native reference io;
+from native reference sys;
+
+stdin = sys.stdin;
+stdout = sys.stdout;
+stderr = sys.stderr;
+
+fn newIOWrapper(inital_value=""){
+	return io.StringIO(initial_value);
+}
+fn WriteIO(io, data){
+	io.write(data);
+}
+
+fn ObjRead(cls, attr, name){
+    setattr(cls, attr, open(name).read());
+}   
+
+fn ObjWrite(cls, attr, name, stream=None){
+    open(name, "w+").write(attr);
+}
+

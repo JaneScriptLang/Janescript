@@ -1,0 +1,34 @@
+from native reference pickle;
+from native reference os;
+
+
+fn opendb(fina){
+    return _Database(os.path.basename(fina), fina+".udb");
+}
+
+structure _Database(dict){
+    fn __init__(this, name, path){
+        this.name = name;
+        this.path = path;
+        super().__init__();
+        if os.path.exists(path){
+            load(this);
+        }
+    }
+    fn __setitem__(this, key, val){
+        update(this);
+        super().__setitem__(key, val);
+    }
+}
+
+fn load(db){
+d = pickle.load(db);
+for i=0 until len(d.keys())-1 step 1{
+k = list(d.keys())[i];
+db[k] = d[k];
+}
+}
+
+fn update(db){
+    pickle.dump(db, open(db.path, "wb+"));
+}

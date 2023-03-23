@@ -1,0 +1,23 @@
+fn matchAll(iterable, func){
+	for i=0 until len(iterable)-1 step 1{
+		x = iterable[i];
+		if not func(x):return False;
+	}
+return 1;
+}
+
+fn foreach(iterable, func){
+	for i=0 until len(iterable)-1 step 1{
+		x = iterable[i];
+		func(x);
+	}
+}
+fn find(iterable, check){
+	for i=0 until len(iterable)-1 step 1{
+		x = iterable[i];
+		if check(x){
+			return x;
+		}
+	}
+return None;
+}
